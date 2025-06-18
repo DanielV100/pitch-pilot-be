@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import Settings
-from app.routes.v1 import health  
+from app.routes.v1 import health_route  
 
 settings = Settings()
 
@@ -26,4 +26,4 @@ app.add_middleware(
 # ───────────────────────────────────────────────
 # Routes
 # ───────────────────────────────────────────────
-app.include_router(health.router, prefix="/api/v1", tags=["System"])
+app.include_router(health_route.router, prefix="/api/v1", tags=["System"])

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.services.health_service import perform_health_check
-from app.models.health import HealthResponse
+from app.models.health_model import HealthResponse
 
 router = APIRouter()
 
