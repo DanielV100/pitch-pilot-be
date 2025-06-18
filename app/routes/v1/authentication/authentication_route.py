@@ -7,7 +7,7 @@ from app.services.authentication.user_authentication_service import UserService
 from app.core.config import settings
 from datetime import timedelta
 from app.core.security import create_jwt
-
+from fastapi.responses import JSONResponse
 router = APIRouter()
 
 
@@ -41,15 +41,24 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_session)):
 @router.post("/login")
 async def login(form: UserLogin, db: AsyncSession = Depends(get_session)):
     service = UserService(db)
-    if not form.email: 
-        user = await service.authenticate(form.username, form.password)
-    else:
-        user = await service.authenticate(form.email, form.password)
+    identifier = form.email or form.username
+    user = await service.authenticate(identifier, form.password)
+
     if not user or not user.is_verified:
         raise HTTPException(status_code=401, detail="invalid_credentials")
+
     access = create_jwt(
         subject=str(user.id),
         expires_in=timedelta(minutes=30),
         purpose="access",
     )
-    return {"access_token": access, "token_type": "bearer"}
+    resp = JSONResponse({"detail": "ok"})           
+    resp.set_cookie(
+        key="pp_token",
+        value=access,
+        httponly=True,         
+        max_age=30 * 60,       
+        samesite="lax",        
+        path="/",
+    )
+    return resp
