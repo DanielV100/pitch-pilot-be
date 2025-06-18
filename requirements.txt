@@ -1,5 +1,14 @@
 fastapi
 uvicorn[standard]
-pydantic
+sqlalchemy>=2.0
+SQLAlchemy[asyncio]>=2.0
+asyncpg
+psycopg2-binary>=2.9 
+asyncpg
+alembic
 pydantic-settings
 python-dotenv
+passlib[argon2]
+python-jose[cryptography]
+pydantic[email]
+resend
