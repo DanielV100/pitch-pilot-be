@@ -6,6 +6,9 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class UserDAO(BaseModel):
+    username: str
+    email: EmailStr
 
 class UserLogin(BaseModel):
     username: str | None = Field(

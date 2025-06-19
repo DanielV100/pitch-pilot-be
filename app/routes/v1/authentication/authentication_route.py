@@ -60,5 +60,6 @@ async def login(form: UserLogin, db: AsyncSession = Depends(get_session)):
         max_age=30 * 60,       
         samesite="lax",        
         path="/",
+        secure=False
     )
     return resp
