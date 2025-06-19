@@ -73,3 +73,5 @@ async def get_my_trainings(
         )
     )
     return training_result.scalars().all()
+
+
