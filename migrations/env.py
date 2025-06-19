@@ -1,5 +1,7 @@
 from logging.config import fileConfig
-from app.models.user_model import Base
+from app.models.base_model import Base
+from app.models import user_model, presentation_model
+
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool

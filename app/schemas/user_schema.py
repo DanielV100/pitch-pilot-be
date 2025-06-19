@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, EmailStr, Field, ValidationError, model_validator, ConfigDict
 
 class UserCreate(BaseModel):
@@ -31,7 +32,7 @@ class UserLogin(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: str
+    id: uuid.UUID
     username: str
     email: EmailStr
     is_verified: bool

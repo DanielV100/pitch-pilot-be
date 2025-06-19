@@ -1,0 +1,18 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.database import get_session
+from app.services.presentation.presentation_service import PresentationService
+from app.schemas.presentation_schema import PresentationCreate, PresentationOut
+from app.models.user_model import User
+from app.dependencies.auth_dep import get_current_user
+
+router = APIRouter()
+
+@router.post("/add-presentation", response_model=PresentationOut, status_code=status.HTTP_201_CREATED)
+async def create_presentation(
+    payload: PresentationCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    service = PresentationService(db)
+    return await service.create_presentation(current_user.id, payload)
