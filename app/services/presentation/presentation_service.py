@@ -9,11 +9,10 @@ class PresentationService:
     async def create_presentation(self, user_id, data):
         presentation = Presentation(
             user_id=user_id,
-            name=data.name,
-            description=data.description,
-            tags=data.tags,
-            findings=data.findings,
-            file_url=data.file_url,
+            name=data["name"],
+            description=data["description"],
+            tags=data["tags"],
+            file_url=data["file_url"],
         )
         self.db.add(presentation)
         await self.db.commit()

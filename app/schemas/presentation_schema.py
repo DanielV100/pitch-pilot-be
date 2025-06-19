@@ -8,8 +8,20 @@ class PresentationCreate(BaseModel):
     name: str = Field(..., max_length=100)
     description: Optional[str]
     tags: List[str] = []
-    findings: Optional[dict] = {}
     file_url: Optional[str] = None
+
+class PresentationFindingOut(BaseModel):
+    id: uuid.UUID
+    findings: dict
+    total_score: float
+    cockpit_score: Optional[float]
+    flight_path_score: Optional[float]
+    altitude_score: Optional[float]
+    preflight_check_score: Optional[float]
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 class PresentationOut(BaseModel):
     id: uuid.UUID
@@ -17,8 +29,11 @@ class PresentationOut(BaseModel):
     name: str
     description: Optional[str]
     tags: List[str]
-    findings: dict
     file_url: Optional[str]
-    trainings: List[TrainingOut] = [] 
+    trainings: List[TrainingOut] = []
+    finding_entries: List[PresentationFindingOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+

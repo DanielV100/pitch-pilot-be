@@ -12,3 +12,10 @@ passlib[argon2]
 python-jose[cryptography]
 pydantic[email]
 resend
+minio
+PyMuPDF
+tqdm
+jiter
+distro
+openai
+python-multipart
