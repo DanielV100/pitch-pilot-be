@@ -9,7 +9,7 @@ from app.models.presentation_model import Presentation, Training
 from app.models.user_model import User
 from app.dependencies.auth_dep import get_current_user
 from app.schemas.presentation_schema import PresentationOut
-from app.schemas.training_schema import TrainingCreate, TrainingOut
+from app.schemas.training_schema import TrainingCreate, TrainingOut, TrainingScorePatch
 from app.services.training.training_service import TrainingService
 
 router = APIRouter()
@@ -25,12 +25,30 @@ async def create_training(
     db: AsyncSession = Depends(get_session),
 ):
     service = TrainingService(db)
-    result = await db.execute(select(Presentation).where(Presentation.id == presentation_id))
-    if result.scalar_one_or_none() is None:
+
+    pres_exists = await db.scalar(
+        select(Presentation.id).where(Presentation.id == presentation_id)
+    )
+    if pres_exists is None:
         raise HTTPException(status_code=404, detail="Presentation not found")
 
-    training = await service.add_training(presentation_id, training_data)
-    return training
+    return await service.add_training(presentation_id, training_data)
+
+@router.patch(
+    "/{training_id}/add-score",
+    response_model=TrainingOut,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_training_score(
+    training_id: UUID,
+    body: TrainingScorePatch,
+    db: AsyncSession = Depends(get_session),
+):
+    service = TrainingService(db)
+    try:
+        return await service.set_score(training_id, body.total_score)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Training not found")
 
 @router.get("/{presentation_id}/get-trainings", response_model=list[TrainingOut])
 async def get_trainings_for_presentation(
