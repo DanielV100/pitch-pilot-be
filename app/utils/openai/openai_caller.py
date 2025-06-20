@@ -281,6 +281,144 @@ _RESPONSE_SCHEMA = {
   }
 }
 
+_AUDIO_ANALYZE_PROMPT = """
+# Role and Objective
+You are a world-class communication coach with expertise in speech clarity, rhetoric, and presentation impact.
+Your task is to analyze a spoken transcript and enhance it by detecting filler expressions, generating insightful questions, and offering improved formulations.
+
+# Instructions
+You will receive a verbatim transcript of a speaker's presentation or pitch.
+Your job is to enhance this transcript by performing three tasks:
+
+## 1. Detect Dynamic Filler Words
+Identify all words and phrases in the transcript that serve as filler expressions or verbal tics.
+These include but are not limited to: "uh", "um", "like", "you know", "so", "basically", "I guess", "right?", etc.
+
+Include each as a structured object with:
+- "word" – the detected filler word or phrase (e.g. "like")
+- "count" – the number of that word
+
+## 2. Generate Follow-Up Questions
+Based on the content and structure of the transcript, generate 5 intelligent and open-ended follow-up questions.
+These should deepen the discussion, highlight possible gaps, or encourage elaboration.
+
+## 3. Suggest Better Formulations
+Detect awkward, redundant, or overly informal phrases and provide clearer, more professional alternatives.
+Each suggestion must include:
+- "original" – the exact phrasing used
+- "suggestion" – your improved version
+- "explanation" – briefly justify why this alternative is better (e.g. clearer, more formal, avoids repetition, etc.)
+
+# Reasoning Steps
+Read the full transcript carefully.
+Identify fillers dynamically — do not use a hardcoded list.
+Understand the topic and structure of the text.
+Think critically about what a professional listener might want to ask next.
+Look for unclear, repetitive, or clumsy phrasing.
+Suggest only targeted improvements that enhance clarity and impact.
+
+# Output Format
+Respond in strict JSON format:
+{
+  "fillers": [
+    { "word": "like", "count": 8 }
+  ],
+  "questions": [
+    "What is an example that illustrates this point?",
+    "Can you clarify what you meant by that term?",
+    "How does this connect to your main message?",
+    "What assumptions are you making here?",
+    "How might someone challenge this argument?"
+  ],
+  "formulation_aids": [
+    {
+      "original": "I was like really surprised",
+      "suggestion": "I was genuinely surprised",
+      "explanation": "'Like' is unnecessary and informal; 'genuinely' is more precise and professional."
+    }
+  ]
+}
+Do not include any explanations or headings outside the JSON object.
+
+# Examples
+## Example 1
+Transcript snippet:
+“So, um, yeah I was like, I don’t know, kind of confused, you know?”
+
+{
+  "fillers": [
+    { "word": "um", "count": 1 },
+    { "word": "like", "count": 1 },
+    { "word": "you know", "count": 1 }
+  ],
+  "questions": [
+    "Why were you confused at that point?",
+    "Can you explain what triggered that feeling?",
+    "Was there a specific detail that caused the confusion?",
+    "How did you resolve that uncertainty?",
+    "What did you learn from that experience?"
+  ],
+  "formulation_aids": [
+    {
+      "original": "I was like, I don’t know, kind of confused",
+      "suggestion": "I was unsure and confused",
+      "explanation": "The original phrase is hesitant and vague; the revision is more direct and clear."
+    }
+  ]
+}
+
+# Context
+This prompt supports tools for presentation training and feedback, helping users identify filler habits, reflect critically, and refine their phrasing for clarity and confidence.
+
+# Final instructions and prompt to think step by step
+Think step by step:
+- First detect filler words with approximate timing.
+- Then understand the topic and craft meaningful follow-up questions.
+- Finally, refine awkward formulations for clarity and impact.
+
+Always output a single valid JSON object.
+Respond in English only, and output nothing but the JSON.
+"""
+
+_AUDIO_ANALYZE_SCHEMA = {
+    "name": "AudioFeedback",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "fillers": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "word": {"type": "string"},
+                        "count": {"type": "integer"}
+                    },
+                    "required": ["word", "count"]
+                }
+            },
+            "questions": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 5,
+                "maxItems": 5
+            },
+            "formulation_aids": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "original": {"type": "string"},
+                        "suggestion": {"type": "string"},
+                        "explanation": {"type": "string"}
+                    },
+                    "required": ["original", "suggestion", "explanation"]
+                }
+            }
+        },
+        "required": ["fillers", "questions", "formulation_aids"]
+    }
+}
+
 
 def get_findings_from_llm(base64_string: str, filename: str, description: str) -> dict:
     response = client.responses.create(
@@ -322,3 +460,39 @@ def get_findings_from_llm(base64_string: str, filename: str, description: str) -
     parsed_json = json.loads(response.output_text)
     validated = FindingsResponse.model_validate(parsed_json)
     return validated
+
+
+
+def get_audio_feedback_from_llm(transcript_text: str) -> dict:
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "system",
+                "content": [{"type": "input_text", "text": _AUDIO_ANALYZE_PROMPT}]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": transcript_text
+                    }
+                ]
+            }
+        ],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "AudioFeedback",
+                "strict": False,
+                "schema": _AUDIO_ANALYZE_SCHEMA["schema"]
+            }
+        },
+        temperature=0,
+        max_output_tokens=2048,
+        top_p=1,
+        store=True
+    )
+
+    return json.loads(response.output_text)

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     FINDING_WEIGHT_FLIGHT_PATH: float = 0.2
     FINDING_WEIGHT_COCKPIT: float = 0.1
     MINIO_PUBLIC_ENDPOINT: str = "http://localhost:9000"
+    WHISPER_MODEL_NAME: str = "distil-large-v3"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
