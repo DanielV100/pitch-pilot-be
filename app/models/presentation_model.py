@@ -147,5 +147,5 @@ class TrainingResult(Base):
     )
 
     training: Mapped["Training"] = relationship(
-        "Training", back_populates="results", lazy="selectin"
+        "Training", back_populates="training_results", lazy="selectin"
     )
