@@ -10,9 +10,17 @@ from app.core.config import settings
 from ctranslate2 import get_cuda_device_count
 import ffmpeg
 from app.utils.openai.openai_caller import get_audio_feedback_from_llm
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from app.utils.audio.audio_score_calculator import (
+    read_env_score_config,
+    speaking_pace_score,
+    volume_score,
+    filler_ratio_score,
+    total_score,
+)
+from concurrent.futures import ThreadPoolExecutor
 
 _whisper_model = None
+
 def get_whisper_model() -> WhisperModel:
     global _whisper_model
     if _whisper_model is None:
@@ -25,7 +33,7 @@ def get_whisper_model() -> WhisperModel:
     return _whisper_model
 
 class Analysis(TypedDict):
-    transcript: dict 
+    transcript: dict
     wpm: float
     avg_volume_dbfs: float
     duration: float
@@ -33,14 +41,18 @@ class Analysis(TypedDict):
     fillers: list[dict]
     questions: list[str]
     formulation_aids: list[dict]
+    clarity_score: float
+    engagement_rating: float
+    filler_ratio: float
+    filler_score: float
+    speaking_score: float
+    volume_score: float
+    total_score: float
 
 def extract_transcript_and_words(path: str | pathlib.Path):
     model = get_whisper_model()
     segments, info = model.transcribe(
-        str(path),
-        beam_size=5,
-        vad_filter=True,
-        word_timestamps=True,
+        str(path), beam_size=1, vad_filter=True, word_timestamps=True
     )
     transcript_words = []
     transcript_full_text = []
@@ -64,8 +76,7 @@ def extract_audio_volume(path: str | pathlib.Path):
     pcm_path = pathlib.Path(path).with_suffix(".wav")
     try:
         (
-            ffmpeg
-            .input(str(path))
+            ffmpeg.input(str(path))
             .output(str(pcm_path), ac=1, ar=16000, format="wav")
             .overwrite_output()
             .run(quiet=True)
@@ -84,7 +95,7 @@ def extract_audio_volume(path: str | pathlib.Path):
             volume_timeline.append({
                 "t": round(i / sr, 2),
                 "rms": round(float(chunk_rms), 6),
-                "dbfs": round(chunk_dbfs, 1)
+                "dbfs": round(chunk_dbfs, 1),
             })
         os.remove(pcm_path)
         return avg_dbfs, volume_timeline
@@ -98,15 +109,25 @@ def analyse_local_file(path: str | pathlib.Path) -> Analysis:
     with ThreadPoolExecutor() as executor:
         futures = {
             "transcript": executor.submit(extract_transcript_and_words, path),
-            "volume": executor.submit(extract_audio_volume, path)
+            "volume": executor.submit(extract_audio_volume, path),
         }
-        results = {}
-        for key, future in futures.items():
-            results[key] = future.result()
+        results = {key: future.result() for key, future in futures.items()}
 
     transcript_text, transcript_words, duration, wpm = results["transcript"]
     avg_dbfs, volume_timeline = results["volume"]
     feedback = get_audio_feedback_from_llm(transcript_text)
+
+    clarity = feedback.get("clarity_score", 0)
+    engagement = feedback.get("engagement_rating", 0)
+
+    cfg = read_env_score_config()
+    speaking = speaking_pace_score(wpm, cfg)
+    volume = volume_score(avg_dbfs, cfg)
+    filler_count = sum(f["count"] for f in feedback["fillers"])
+    filler_ratio_val = filler_count / len(transcript_words) if transcript_words else 0
+    filler_score_val = filler_ratio_score(filler_ratio_val, cfg)
+
+    total = total_score(clarity, engagement, speaking, volume, filler_score_val, cfg)
 
     return {
         "transcript": {
@@ -119,5 +140,13 @@ def analyse_local_file(path: str | pathlib.Path) -> Analysis:
         "volume_timeline": volume_timeline,
         "fillers": feedback["fillers"],
         "questions": feedback["questions"],
-        "formulation_aids": feedback["formulation_aids"]
+        "formulation_aids": feedback["formulation_aids"],
+        "clarity_score": clarity,
+        "engagement_rating": engagement,
+        "filler_ratio": round(filler_ratio_val, 3),
+        "filler_score": round(filler_score_val, 1),
+        "speaking_score": round(speaking, 1),
+        "volume_score": round(volume, 1),
+        "total_score": total, 
+        "total_words": len(transcript_words)
     }
