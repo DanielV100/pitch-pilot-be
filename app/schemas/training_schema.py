@@ -35,6 +35,7 @@ class TrainingOut(BaseModel):
     eye_calibration: Optional[EyeCalibration]
     total_score: float
     date: datetime
+    video_url: Optional[str]  
 
     model_config = ConfigDict(from_attributes=True)
 

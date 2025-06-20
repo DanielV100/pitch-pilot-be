@@ -1,9 +1,12 @@
-# routes/recording.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from uuid import uuid4
 
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.minio_helper import create_upload_urls, compose_to_single
+from app.utils.minio_helper import public_object_url
+from app.dependencies.auth_dep import get_session
+from app.models.presentation_model import Training
 
 router = APIRouter()
 class StartPayload(BaseModel):
@@ -20,10 +23,17 @@ def start_recording(data: StartPayload):
     urls = create_upload_urls(prefix)
     return {"prefix": prefix, "urls": urls}
 
+@router.post("/finish", response_model=dict[str, str])
+async def finish_recording(
+    data: FinishPayload, db: AsyncSession = Depends(get_session)
+):
+    final_key = f"{data.training_id}/{data.prefix.split('/')[-1]}.webm"
+    compose_to_single(data.prefix, final_key)
+    training: Training | None = await db.get(Training, data.training_id)
+    if training is None:
+        raise HTTPException(404, "training not found")
 
-@router.post("/finish")
-def finish_recording(data: FinishPayload):
-    final_name = f"{data.training_id}/{data.prefix.split('/')[-1]}.webm"
-    compose_to_single(data.prefix, final_name)
-    # TODO: save `final_name` to Postgres
-    return {"object": final_name}
+    training.video_url = public_object_url(final_key)
+    db.commit()
+
+    return {"object": final_key, "url": training.video_url}

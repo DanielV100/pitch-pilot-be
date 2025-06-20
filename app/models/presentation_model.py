@@ -40,6 +40,9 @@ class Training(Base):
     total_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Total score for the training session")
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     presentation: Mapped["Presentation"] = relationship("Presentation", back_populates="trainings")
+    video_url: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Permanent MinIO URL for the recording"
+    )
     duration_seconds: Mapped[int] = mapped_column(
         Integer, nullable=True, comment="Total session time in seconds"
     )

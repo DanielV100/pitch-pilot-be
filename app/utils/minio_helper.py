@@ -72,3 +72,7 @@ def compose_to_single(prefix: str, out_name: str):
 
     internal.compose_object(BUCKET, out_name, sources)
 
+def public_object_url(key: str) -> str:
+    """Return a bucket-public URL usable by browsers without signing."""
+    return f"{settings.MINIO_PUBLIC_ENDPOINT.rstrip('/')}/{BUCKET}/{key}"
+
