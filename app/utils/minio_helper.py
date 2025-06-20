@@ -1,5 +1,6 @@
 
 from datetime import timedelta
+import pathlib
 from uuid import uuid4
 from fastapi import UploadFile
 from minio import Minio, S3Error
@@ -68,11 +69,20 @@ def compose_to_single(prefix: str, out_name: str):
         for obj in parts_iter
     ]
     if not sources:
-        raise ValueError(f"No parts found under {prefix}")
+        raise ValueError(f"No part found under {prefix}")
 
     internal.compose_object(BUCKET, out_name, sources)
 
 def public_object_url(key: str) -> str:
     """Return a bucket-public URL usable by browsers without signing."""
     return f"{settings.MINIO_PUBLIC_ENDPOINT.rstrip('/')}/{BUCKET}/{key}"
+
+def download_object_to_tmpfile(key: str) -> pathlib.Path:
+    """
+    Downloads a MinIO object to a temporary file and returns its Path.
+    """
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".webm")
+    internal.fget_object(BUCKET, key, tmp.name)
+    return pathlib.Path(tmp.name)
 

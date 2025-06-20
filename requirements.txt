@@ -19,3 +19,6 @@ jiter
 distro
 openai
 python-multipart
+faster-whisper
+ffmpeg-python
+soundfile

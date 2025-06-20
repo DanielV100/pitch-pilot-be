@@ -1,12 +1,15 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from uuid import uuid4
 
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.utils.minio_helper import create_upload_urls, compose_to_single
-from app.utils.minio_helper import public_object_url
+from app.utils.minio_helper import create_upload_urls, compose_to_single, download_object_to_tmpfile, public_object_url
 from app.dependencies.auth_dep import get_session
-from app.models.presentation_model import Training
+from app.models.presentation_model import Training, TrainingResult
+from minio import Minio
+from app.utils.audio.audio_analysis_helper import analyse_local_file
 
 router = APIRouter()
 class StartPayload(BaseModel):
@@ -23,17 +26,47 @@ def start_recording(data: StartPayload):
     urls = create_upload_urls(prefix)
     return {"prefix": prefix, "urls": urls}
 
-@router.post("/finish", response_model=dict[str, str])
+
+@router.post("/finish", response_model=dict)
 async def finish_recording(
     data: FinishPayload, db: AsyncSession = Depends(get_session)
 ):
     final_key = f"{data.training_id}/{data.prefix.split('/')[-1]}.webm"
     compose_to_single(data.prefix, final_key)
-    training: Training | None = await db.get(Training, data.training_id)
+
+    training = await db.get(Training, data.training_id)
     if training is None:
         raise HTTPException(404, "training not found")
 
-    training.video_url = public_object_url(final_key)
-    db.commit()
+    tmp_path = download_object_to_tmpfile(final_key)
+    analysis = analyse_local_file(tmp_path)
 
-    return {"object": final_key, "url": training.video_url}
+    stmt = select(TrainingResult).where(TrainingResult.training_id == data.training_id)
+    existing_result = await db.execute(stmt)
+    existing_result = existing_result.scalar_one_or_none()
+
+    if existing_result:
+        existing_result.audio_scores = analysis
+        existing_result.audio_total_score = analysis["total_score"]
+        existing_result.created_at = datetime.now(timezone.utc)
+        result = existing_result
+    else:
+        result = TrainingResult(
+            training_id=data.training_id,
+            audio_scores=analysis,
+            audio_total_score=analysis["total_score"],
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(result)
+
+    await db.commit()
+    await db.refresh(result)
+
+    return {
+        "object": final_key,
+        "url": public_object_url(final_key),
+        "analysis": analysis,
+        "result_id": str(result.id)
+    }
+
+
