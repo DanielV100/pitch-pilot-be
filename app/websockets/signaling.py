@@ -7,7 +7,7 @@ router = APIRouter()
 rooms: Dict[str, Set[WebSocket]] = {}
 
 
-@router.websocket("/ws")
+@router.websocket("/join")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
     try:

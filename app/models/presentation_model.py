@@ -58,6 +58,13 @@ class Training(Base):
     eye_calibration: Mapped[dict] = mapped_column(
         JSONB, nullable=True, comment="Raw calibration JSON from frontend"
     )
+    blendshapes: Mapped[list["Blendshape"]] = relationship(
+    "Blendshape",
+    back_populates="training",
+    cascade="all, delete-orphan",
+    lazy="selectin"
+)
+
 
 class PresentationFinding(Base):
     __tablename__ = "presentation_findings"
@@ -76,3 +83,26 @@ class PresentationFinding(Base):
     is_active: Mapped[bool] = mapped_column(default=False)
     presentation: Mapped["Presentation"] = relationship("Presentation", back_populates="finding_entries")
 
+
+class Blendshape(Base):
+    __tablename__ = "blendshapes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    training_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trainings.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    timestamp: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="Seconds since training start"
+    )
+
+    scores: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, comment="Map of blendshape scores, e.g. {'jawOpen': 0.42}"
+    )
+
+    training: Mapped["Training"] = relationship(
+        "Training", back_populates="blendshapes", lazy="selectin"
+    )
