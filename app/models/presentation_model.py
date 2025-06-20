@@ -1,5 +1,3 @@
-# app/models/presentation_and_training.py
-
 from sqlalchemy import Integer, String, ForeignKey, Text, DateTime, Float, Enum as PgEnum
 from sqlalchemy.orm import relationship, mapped_column, Mapped, declarative_base
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB  
@@ -63,7 +61,14 @@ class Training(Base):
     back_populates="training",
     cascade="all, delete-orphan",
     lazy="selectin"
-)
+) 
+    training_results: Mapped[list["TrainingResult"]] = relationship(
+        "TrainingResult",
+        back_populates="training",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
 
 
 class PresentationFinding(Base):
@@ -105,4 +110,42 @@ class Blendshape(Base):
 
     training: Mapped["Training"] = relationship(
         "Training", back_populates="blendshapes", lazy="selectin"
+    )
+
+
+class TrainingResult(Base):
+    __tablename__ = "training_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+
+    training_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trainings.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    eye_tracking_scores: Mapped[dict] = mapped_column(
+        JSONB, nullable=True, comment="Raw eye tracking metrics"
+    )
+
+    eye_tracking_total_score: Mapped[float] = mapped_column(
+        Float, nullable=True, comment="Aggregated score from eye tracking"
+    )
+
+    audio_scores: Mapped[dict] = mapped_column(
+        JSONB, nullable=True, comment="Detailed metrics from audio analysis"
+    )
+
+    audio_total_score: Mapped[float] = mapped_column(
+        Float, nullable=True, comment="Aggregated score from audio analysis"
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+
+    training: Mapped["Training"] = relationship(
+        "Training", back_populates="results", lazy="selectin"
     )
