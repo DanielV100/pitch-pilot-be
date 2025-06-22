@@ -69,6 +69,8 @@ class Training(Base):
         lazy="selectin"
     )
 
+    eye_tracking_scores: Mapped[dict] = mapped_column(JSONB, nullable=True, comment="Heatmap der Blickpunkte")
+    eye_tracking_total_score: Mapped[float] = mapped_column(Float, nullable=True, comment="Finaler Eye Tracking Score")
 
 
 class PresentationFinding(Base):

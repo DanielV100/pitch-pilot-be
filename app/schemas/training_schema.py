@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uuid
 from uuid import UUID
 from datetime import datetime
@@ -36,6 +36,7 @@ class TrainingOut(BaseModel):
     total_score: float
     date: datetime
     video_url: Optional[str]  
+    eye_tracking_total_score: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 

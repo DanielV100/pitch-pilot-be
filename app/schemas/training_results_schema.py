@@ -28,3 +28,19 @@ class TrainingResultOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class TrainingOut(BaseModel):
+    id: UUID
+    presentation_id: UUID
+    duration_seconds: int
+    visibility_mode: VisibilityMode
+    difficulty: DifficultyLevel
+    eye_calibration: Optional[EyeCalibration]
+    total_score: float
+    date: datetime
+    video_url: Optional[str]
+    # NEU:
+    eye_tracking_scores: Optional[dict] = None
+    eye_tracking_total_score: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
