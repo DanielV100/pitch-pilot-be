@@ -2,6 +2,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
+from enum import Enum
+
+class VisibilityMode(str, Enum):
+    solo = "solo"
+    private = "private"
+
+class DifficultyLevel(str, Enum):
+    easy = "easy"
+    medium = "medium"
+    hard = "hard"
+
+class EyeCalibration(BaseModel):
+    points: list[dict]
 
 class TrainingResultCreate(BaseModel):
     training_id: UUID
@@ -39,7 +52,6 @@ class TrainingOut(BaseModel):
     total_score: float
     date: datetime
     video_url: Optional[str]
-    # NEU:
     eye_tracking_scores: Optional[dict] = None
     eye_tracking_total_score: Optional[float] = None
 

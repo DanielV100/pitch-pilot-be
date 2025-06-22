@@ -11,7 +11,8 @@ from app.dependencies.auth_dep import get_current_user
 from app.schemas.presentation_schema import PresentationOut
 from app.schemas.training_schema import TrainingCreate, TrainingOut, TrainingScorePatch
 from app.services.training.training_service import TrainingService
-from app.utils.eye_tracking import calculate_attention_score
+from app.utils.eye_tracking import calculate_attention_score, calculate_eye_tracking
+from app.schemas.training_results_schema import TrainingResultCreate
 
 router = APIRouter()
 
@@ -110,15 +111,36 @@ async def save_eye_tracking(
     current_user: User = Depends(get_current_user)
 ):
     blendshapes = data["blendshapes"]
-    attention_score = calculate_attention_score(blendshapes)
+    heatmap, attention_score = calculate_eye_tracking(blendshapes)
+
+    # Try to find existing TrainingResult for this training
+    stmt = select(TrainingResult).where(TrainingResult.training_id == tid)
+    result = await db.execute(stmt)
+    training_result = result.scalar_one_or_none()
+
+    if training_result:
+        training_result.eye_tracking_scores = heatmap
+        training_result.eye_tracking_total_score = attention_score
+        training_result.created_at = datetime.now(timezone.utc)
+    else:
+        training_result = TrainingResult(
+            training_id=tid,
+            eye_tracking_scores=heatmap,
+            eye_tracking_total_score=attention_score,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(training_result)
+
+    # Optionally, also update the Training table for quick access
     await db.execute(
         update(Training)
         .where(Training.id == tid)
         .values(
-            eye_tracking_total_score=attention_score
+            eye_tracking_total_score=attention_score,
+            eye_tracking_scores=heatmap
         )
     )
     await db.commit()
-    return {"success": True, "attention_score": attention_score}
+    return {"success": True, "attention_score": attention_score, "heatmap": heatmap}
 
 
