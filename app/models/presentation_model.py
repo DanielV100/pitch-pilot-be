@@ -68,6 +68,9 @@ class Training(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
+    slide_events: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=True, comment="List of slide change events as [{timestamp, page}]"
+    )
 
 
 

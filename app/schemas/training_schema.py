@@ -9,6 +9,9 @@ class VisibilityMode(str, Enum):
     solo = "solo"       
     private = "private"
     
+class SlideEvent(BaseModel):
+    timestamp: float
+    page: int
 
 class DifficultyLevel(str, Enum):
     easy   = "easy"
@@ -25,6 +28,7 @@ class TrainingCreate(BaseModel):
     difficulty: DifficultyLevel
     eye_calibration: Optional[EyeCalibration] = None
     date: Optional[datetime] = None 
+    slide_events: Optional[List[SlideEvent]] = None
 
 class TrainingOut(BaseModel):
     id: UUID
@@ -36,6 +40,7 @@ class TrainingOut(BaseModel):
     total_score: float
     date: datetime
     video_url: Optional[str]  
+    slide_events: Optional[List[SlideEvent]]  
 
     model_config = ConfigDict(from_attributes=True)
 
