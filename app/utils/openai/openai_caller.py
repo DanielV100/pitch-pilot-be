@@ -297,6 +297,7 @@ These include but are not limited to: "uh", "um", "like", "you know", "so", "bas
 Include each as a structured object with:
 - "word" – the detected filler word or phrase (e.g. "like")
 - "count" – the number of that word
+- "explanation" – a brief explanation of why it is considered a filler (e.g. "used to fill pauses or indicate hesitation")
 
 ## 2. Generate Follow-Up Questions
 Based on the content and structure of the transcript, generate 5 intelligent and open-ended follow-up questions.

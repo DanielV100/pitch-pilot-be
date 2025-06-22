@@ -92,4 +92,17 @@ async def get_my_trainings(
     )
     return training_result.scalars().all()
 
+@router.get("/{training_id}/get-training", response_model=TrainingOut)
+async def get_training_flight_log(
+    training_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(Training).where(Training.id == training_id)
+    result = await db.execute(stmt)
+    training = result.scalar_one_or_none()
+    if not training:
+        raise HTTPException(status_code=404, detail="Training not found")
+    return training
+
 

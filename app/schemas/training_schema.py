@@ -4,6 +4,7 @@ import uuid
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
+from .training_results_schema import TrainingResultOut
 
 class VisibilityMode(str, Enum):
     solo = "solo"       
@@ -41,6 +42,7 @@ class TrainingOut(BaseModel):
     date: datetime
     video_url: Optional[str]  
     slide_events: Optional[List[SlideEvent]]  
+    training_results: List[TrainingResultOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 
