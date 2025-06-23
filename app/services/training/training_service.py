@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.presentation_model import Presentation
@@ -34,6 +35,15 @@ class TrainingService:
         if training is None:
             raise LookupError("Training not found")
         training.total_score = score
+        await self.db.commit()
+        await self.db.refresh(training)
+        return training
+    
+    async def set_video_url(self, training_id: UUID, video_url: str) -> Training:
+        training: Optional[Training] = await self.db.get(Training, training_id)
+        if training is None:
+            raise LookupError("Training not found")
+        training.video_url = video_url
         await self.db.commit()
         await self.db.refresh(training)
         return training

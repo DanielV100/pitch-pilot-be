@@ -103,44 +103,17 @@ async def get_my_trainings(
     )
     return training_result.scalars().all()
 
-@router.post("/trainings/{tid}/eye-tracking")
-async def save_eye_tracking(
-    tid: UUID,
-    data: dict = Body(...),
+@router.get("/{training_id}/get-training", response_model=TrainingOut)
+async def get_training_flight_log(
+    training_id: UUID,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    blendshapes = data["blendshapes"]
-    heatmap, attention_score = calculate_eye_tracking(blendshapes)
-
-    # Try to find existing TrainingResult for this training
-    stmt = select(TrainingResult).where(TrainingResult.training_id == tid)
+    stmt = select(Training).where(Training.id == training_id)
     result = await db.execute(stmt)
-    training_result = result.scalar_one_or_none()
-
-    if training_result:
-        training_result.eye_tracking_scores = heatmap
-        training_result.eye_tracking_total_score = attention_score
-        training_result.created_at = datetime.now(timezone.utc)
-    else:
-        training_result = TrainingResult(
-            training_id=tid,
-            eye_tracking_scores=heatmap,
-            eye_tracking_total_score=attention_score,
-            created_at=datetime.now(timezone.utc)
-        )
-        db.add(training_result)
-
-    # Optionally, also update the Training table for quick access
-    await db.execute(
-        update(Training)
-        .where(Training.id == tid)
-        .values(
-            eye_tracking_total_score=attention_score,
-            eye_tracking_scores=heatmap
-        )
-    )
-    await db.commit()
-    return {"success": True, "attention_score": attention_score, "heatmap": heatmap}
+    training = result.scalar_one_or_none()
+    if not training:
+        raise HTTPException(status_code=404, detail="Training not found")
+    return training
 
 

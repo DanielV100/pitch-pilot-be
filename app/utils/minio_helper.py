@@ -1,5 +1,6 @@
 
 from datetime import timedelta
+from io import BytesIO
 import pathlib
 from uuid import uuid4
 from fastapi import UploadFile
@@ -25,18 +26,18 @@ public = Minio(
 )
 
 
-def upload_file_to_minio(file: UploadFile, prefix: str = "presentations") -> str:
-    ext = file.filename.split(".")[-1]
+def upload_file_to_minio(file_buffer: BytesIO, filename: str, prefix: str = "presentations", content_type: str = "application/pdf") -> str:
+    ext = filename.split(".")[-1]
     obj = f"{prefix}/{uuid4()}.{ext}"
 
+    file_buffer.seek(0)  # Always rewind
     try:
         internal.put_object(
             bucket_name=BUCKET,
             object_name=obj,
-            data=file.file,
-            length=-1,
-            part_size=10 * 1024 * 1024,
-            content_type=file.content_type,
+            data=file_buffer,
+            length=len(file_buffer.getbuffer()),
+            content_type=content_type,
         )
         return f"{settings.MINIO_PUBLIC_ENDPOINT.rstrip('/')}/{BUCKET}/{obj}"
     except S3Error as e:

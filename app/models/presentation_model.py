@@ -68,6 +68,9 @@ class Training(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
+    slide_events: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=True, comment="List of slide change events as [{timestamp, page}]"
+    )
 
     eye_tracking_scores: Mapped[dict] = mapped_column(JSONB, nullable=True, comment="Heatmap der Blickpunkte")
     eye_tracking_total_score: Mapped[float] = mapped_column(Float, nullable=True, comment="Finaler Eye Tracking Score")
