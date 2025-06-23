@@ -4,11 +4,15 @@ import uuid
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
+from .training_results_schema import TrainingResultOut
 
 class VisibilityMode(str, Enum):
     solo = "solo"       
     private = "private"
     
+class SlideEvent(BaseModel):
+    timestamp: float
+    page: int
 
 class DifficultyLevel(str, Enum):
     easy   = "easy"
@@ -25,6 +29,7 @@ class TrainingCreate(BaseModel):
     difficulty: DifficultyLevel
     eye_calibration: Optional[EyeCalibration] = None
     date: Optional[datetime] = None 
+    slide_events: Optional[List[SlideEvent]] = None
 
 class TrainingOut(BaseModel):
     id: UUID
@@ -36,11 +41,23 @@ class TrainingOut(BaseModel):
     total_score: float
     date: datetime
     video_url: Optional[str]  
+    slide_events: Optional[List[SlideEvent]]  
+    training_results: List[TrainingResultOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 
 class TrainingScorePatch(BaseModel):
     total_score: float = Field(..., ge=0)
+
+class TrainingOutSlim(BaseModel):
+    id: UUID
+    presentation_id: UUID
+    duration_seconds: int
+    total_score: float
+    date: datetime
+    video_url: Optional[str]  
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 

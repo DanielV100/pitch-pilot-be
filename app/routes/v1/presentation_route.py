@@ -30,11 +30,14 @@ async def create_presentation(
 ):
     file_bytes = await file.read()  
     file_buffer = BytesIO(file_bytes)
-    file_url = upload_file_to_minio(file=file) 
-    print(f"File uploaded to MinIO: {file_url}")
+    file_url = upload_file_to_minio(
+        file_buffer=file_buffer,  
+        filename=file.filename,
+        content_type=file.content_type,
+    )
 
     
-    findings_result = process_presentation_file(BytesIO(file_bytes), descrption=description)  
+    findings_result = process_presentation_file(file_buffer, descrption=description)  
 
     presentation_service = PresentationService(db)
     presentation = await presentation_service.create_presentation(
@@ -149,3 +152,24 @@ async def get_finding_bars(
             })
 
     return buckets
+
+@router.get("/{presentation_id}/get-file-url", response_model=dict)
+async def get_presentation_file_url(
+    presentation_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.user_id == current_user.id
+        )
+    )
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found or not yours")
+
+    if not presentation.file_url:
+        raise HTTPException(status_code=404, detail="No file URL stored for this presentation")
+
+    return {"file_url": presentation.file_url}
