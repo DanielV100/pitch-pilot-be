@@ -49,6 +49,16 @@ class TrainingOut(BaseModel):
 class TrainingScorePatch(BaseModel):
     total_score: float = Field(..., ge=0)
 
+class TrainingOutSlim(BaseModel):
+    id: UUID
+    presentation_id: UUID
+    duration_seconds: int
+    total_score: float
+    date: datetime
+    video_url: Optional[str]  
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 
