@@ -12,6 +12,7 @@ from app.models.presentation_model import Training, TrainingResult
 from minio import Minio
 from app.utils.audio.audio_analysis_helper import analyse_local_file
 from app.schemas.training_schema import SlideEvent
+from app.services.training.training_service import TrainingService
 
 router = APIRouter()
 class StartPayload(BaseModel):
@@ -36,6 +37,7 @@ async def finish_recording(
 ):
     final_key = f"{data.training_id}/{data.prefix.split('/')[-1]}.webm"
     compose_to_single(data.prefix, final_key)
+    video_url = public_object_url(final_key)
 
     training = await db.get(Training, data.training_id)
     if training is None:
@@ -44,6 +46,8 @@ async def finish_recording(
     if data.slide_events:
         training.slide_events = [e.model_dump() for e in data.slide_events]
 
+    training_service = TrainingService(db)
+    await training_service.set_video_url(training.id, video_url)
     tmp_path = download_object_to_tmpfile(final_key)
     analysis = analyse_local_file(tmp_path)
 
@@ -70,7 +74,7 @@ async def finish_recording(
 
     return {
         "object": final_key,
-        "url": public_object_url(final_key),
+        "url": video_url,
         "analysis": analysis,
         "result_id": str(result.id)
     }
