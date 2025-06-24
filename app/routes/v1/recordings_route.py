@@ -11,7 +11,7 @@ from app.dependencies.auth_dep import get_session
 from app.models.presentation_model import Training, TrainingResult
 from minio import Minio
 from app.utils.audio.audio_analysis_helper import analyse_local_file
-from app.utils.eye_tracking import calculate_eye_tracking
+from app.utils.eye_tracking import calculate_eye_tracking, calculate_attention_score
 from app.schemas.training_schema import SlideEvent
 from app.services.training.training_service import TrainingService
 
@@ -53,12 +53,22 @@ async def finish_recording(
     tmp_path = download_object_to_tmpfile(final_key)
     audio_analysis = analyse_local_file(tmp_path)
 
-    heatmap, attention_score = None, None
+    heatmap = {} # Initialisiere mit leerem Dict statt None
+    attention_score = 0.0 # Initialisiere mit 0.0 statt None
     eye_tracking_results = None
     if data.blendshapes:
-        heatmap, attention_score = calculate_eye_tracking(data.blendshapes)
-        eye_tracking_results = {"scores": heatmap, "total_score": attention_score}
+        print(f"[DEBUG] Received blendshapes... (total {len(data.blendshapes)})")
+        
+        # 1. Rufe die erste Funktion NUR für die Heatmap auf.
+        heatmap, _ = calculate_eye_tracking(data.blendshapes)
 
+        # 2. Rufe die ZWEITE Funktion für den echten Score auf.
+        attention_score = calculate_attention_score(data.blendshapes)
+        
+        eye_tracking_results = {"scores": heatmap, "total_score": attention_score}
+        print(f"[DEBUG] Eye tracking output: heatmap={heatmap}, attention_score={attention_score}")
+
+        
     stmt = select(TrainingResult).where(TrainingResult.training_id == data.training_id)
     existing_result = await db.execute(stmt)
     existing_result = existing_result.scalar_one_or_none()

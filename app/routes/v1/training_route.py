@@ -109,20 +109,12 @@ async def get_training_flight_log(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    result = await db.execute(
-        select(Training, TrainingResult)
-        .outerjoin(TrainingResult, Training.id == TrainingResult.training_id)
-        .where(Training.id == training_id)
-    )
-    row = result.first()
-    if not row:
+    stmt = select(Training).where(Training.id == training_id)
+    result = await db.execute(stmt)
+    training = result.scalar_one_or_none()
+    if not training:
         raise HTTPException(status_code=404, detail="Training not found")
-    training, results = row
-    if results:
-        training.eye_tracking_scores = results.eye_tracking_scores
-        training.eye_tracking_total_score = results.eye_tracking_total_score
-        training.audio_scores = results.audio_scores
-        training.audio_total_score = results.audio_total_score
     return training
+
 
 
