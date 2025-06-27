@@ -57,8 +57,19 @@ async def create_presentation(
         findings=filtered_findings,
         is_active=True
     )
+    await db.commit()
 
-    return presentation
+    result = await db.execute(
+        select(Presentation)
+        .options(
+            selectinload(Presentation.trainings),
+            selectinload(Presentation.finding_entries),
+        )
+        .where(Presentation.id == presentation.id)
+    )
+    presentation_full = result.scalar_one()
+
+    return presentation_full
 
 
 
