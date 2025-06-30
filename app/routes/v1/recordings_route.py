@@ -124,7 +124,7 @@ async def finish_recording(
     # 2. Calculate total score
     scores = [
         attention_score if attention_score is not None else 0.0,
-        audio_analysis["total_score"] if audio_analysis and "total_score" in audio_analysis else 0.0,
+        audio_analysis["total_score"]*100 if audio_analysis and "total_score" in audio_analysis else 0.0,
         content_score if content_score is not None else 0.0,
     ]
     total_score = sum(scores) / 3.0
