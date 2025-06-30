@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from uuid import uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.minio_helper import create_upload_urls, compose_to_single, download_object_to_tmpfile, public_object_url
 from app.dependencies.auth_dep import get_session
-from app.models.presentation_model import Blendshape, Training, TrainingResult
+from app.models.presentation_model import Blendshape, PresentationFinding, Training, TrainingResult
 from minio import Minio
 from app.utils.audio.audio_analysis_helper import analyse_local_file
 from app.schemas.training_schema import SlideEvent
@@ -94,6 +94,44 @@ async def finish_recording(
 
     await db.commit()
     await db.refresh(result)
+
+    presentation_id = training.presentation_id
+
+    finding = (
+        await db.execute(
+            select(PresentationFinding)
+            .where(
+                PresentationFinding.presentation_id == presentation_id,
+                PresentationFinding.is_active == True
+            )
+            .order_by(desc(PresentationFinding.created_at))
+            .limit(1)
+        )
+    ).scalars().first()
+
+    if not finding:
+        finding = (
+            await db.execute(
+                select(PresentationFinding)
+                .where(PresentationFinding.presentation_id == presentation_id)
+                .order_by(desc(PresentationFinding.created_at))
+                .limit(1)
+            )
+        ).scalars().first()
+
+    content_score = finding.total_score if finding else 0.0
+
+    # 2. Calculate total score
+    scores = [
+        attention_score if attention_score is not None else 0.0,
+        audio_analysis["total_score"] if audio_analysis and "total_score" in audio_analysis else 0.0,
+        content_score if content_score is not None else 0.0,
+    ]
+    total_score = sum(scores) / 3.0
+
+    # 3. Save to training
+    training.total_score = total_score
+    await db.flush()
 
     return {
         "object": final_key,
