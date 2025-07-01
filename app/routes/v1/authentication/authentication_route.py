@@ -49,7 +49,7 @@ async def login(form: UserLogin, db: AsyncSession = Depends(get_session)):
 
     access = create_jwt(
         subject=str(user.id),
-        expires_in=timedelta(minutes=30),
+        expires_in=timedelta(minutes=60),
         purpose="access",
     )
     resp = JSONResponse({"detail": "ok"})           
