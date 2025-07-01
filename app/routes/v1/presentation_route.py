@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, status, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_session
 from app.services.presentation.presentation_service import PresentationService
@@ -14,10 +14,17 @@ from uuid import UUID
 from app.utils.findings.findings_generator import process_presentation_file
 from app.services.findings.findings_service import FindingService
 from app.utils.findings.calculator import filter_findings
+from app.models.presentation_model import TrainingResult
+from app.schemas.presentation_schema import LatestTrainingAnalyticsOut
+
 
 router = APIRouter()
 
+
+
+
 from io import BytesIO
+
 
 @router.post("/add-presentation", response_model=PresentationOut, status_code=status.HTTP_201_CREATED)
 async def create_presentation(
@@ -184,3 +191,66 @@ async def get_presentation_file_url(
         raise HTTPException(status_code=404, detail="No file URL stored for this presentation")
 
     return {"file_url": presentation.file_url}
+
+
+@router.get(
+    "/{presentation_id}/latest-training-analytics",
+    response_model=LatestTrainingAnalyticsOut,
+    summary="Get analytics data for the dashboard" # Name angepasst
+)
+async def get_latest_training_analytics(
+    presentation_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Fetches analysis scores for the dashboard.
+    - Content/Delivery scores come from the active presentation finding.
+    - Engagement score comes from the most recent training result.
+    """
+    # 1. Zugriff prüfen (bleibt gleich)
+    presentation = await db.get(Presentation, presentation_id)
+    if not presentation or presentation.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Presentation not found or access denied",
+        )
+
+    # 2. Hole die aktive Präsentations-Analyse (für Content und Delivery)
+    finding_stmt = select(PresentationFinding).where(
+        PresentationFinding.presentation_id == presentation_id,
+        PresentationFinding.is_active.is_(True)
+    )
+    finding_result = await db.execute(finding_stmt)
+    active_finding = finding_result.scalar_one_or_none()
+    
+    # 3. Hole das letzte Trainings-Ergebnis (für Engagement)
+    result_stmt = (
+        select(TrainingResult)
+        .join(Training, Training.id == TrainingResult.training_id)
+        .where(Training.presentation_id == presentation_id)
+        .order_by(Training.date.desc())
+        .limit(1)
+    )
+    latest_result = await db.scalar(result_stmt) # .scalar() ist hier kürzer
+
+    # 4. Baue die Antwort zusammen
+    
+    # Berechne den Content-Score (z.B. als Durchschnitt der relevanten Finding-Scores)
+    # Annahme: "Content" ist der Durchschnitt aus 'flight_path' und 'preflight_check'
+    content_score = 0
+    if active_finding and active_finding.flight_path_score is not None and active_finding.preflight_check_score is not None:
+         content_score = (active_finding.flight_path_score + active_finding.preflight_check_score) / 2
+
+    # Annahme: "Delivery" ist der 'cockpit_score'
+    delivery_score = active_finding.cockpit_score if active_finding else 0
+
+    engagement_score = 0
+    if latest_result and latest_result.eye_tracking_total_score is not None:
+        engagement_score = latest_result.eye_tracking_total_score * 100
+
+    return LatestTrainingAnalyticsOut(
+        content_score=content_score,
+        delivery_score=delivery_score,
+        engagement_score=engagement_score
+    )

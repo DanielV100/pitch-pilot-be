@@ -46,5 +46,9 @@ class PresentationOutSlim(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class LatestTrainingAnalyticsOut(BaseModel):
+    content_score: Optional[float] = Field(default=0, description="Content score of the latest training")
+    delivery_score: Optional[float] = Field(default=0, description="Delivery score of the latest training")
+    engagement_score: Optional[float] = Field(default=0, description="Engagement score (from eye tracking) of the latest training")
 
-
+    model_config = ConfigDict(from_attributes=True)
